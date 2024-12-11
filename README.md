@@ -1,14 +1,16 @@
-实现一个简单的基于时间一次性密码（TOTP, Time-based One-Time Password）的身份鉴别系统：
+Implement a **simple** identity authentication system based on time-based one-time password (TOTP):
 
-1. 一个基于python flask框架实现后端的网页登录系统；
-2. 使用TOTP以及用户密码的多因素身份鉴别；
-3. 基于ECDH的密钥交换及传输数据加密。
+1. A web login system based on the python flask framework to implement the backend;
 
-开始：
+2. Multi-factor identity authentication using TOTP and user password;
+
+3. Key exchange based on ECDH and transmission data encryption.
+
+Start:
 
 ```shell
 pip install -r requirements.txt
 python ./code/main.py
 ```
 
-网页html需自行部署（如使用VS Code的Live Server插件）
+Web html needs to be deployed by yourself (such as using the Live Server plugin of VS Code)
