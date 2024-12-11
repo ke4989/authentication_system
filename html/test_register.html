@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Register</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.0/jsrsasign-all-min.js"></script> -->
+</head>
+
+<body>
+    <h2>Registration Form</h2>
+    <form id="registerForm">
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username"><br>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password"><br>
+        <button type="button" onclick="register(event)">Register</button>
+    </form>
+
+    <div id="qrCodeContainer"></div>
+
+    <script>
+        // 解密逻辑
+        function decryptAES(data) {
+            const encrypted_qr_code = CryptoJS.enc.Base64.parse(data.otp_qr_code);
+            const symmetric_key = CryptoJS.enc.Base64.parse(data.symmetric_key);
+            const iv = CryptoJS.enc.Base64.parse(data.iv);
+
+            // 解密
+            const decrypted = CryptoJS.AES.decrypt(
+                { ciphertext: encrypted_qr_code },
+                symmetric_key,
+                {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                }
+            );
+
+            // 转换为字节数组
+            const decryptedArray = [];
+            decrypted.words.forEach((word) => {
+                decryptedArray.push((word >> 24) & 0xff);
+                decryptedArray.push((word >> 16) & 0xff);
+                decryptedArray.push((word >> 8) & 0xff);
+                decryptedArray.push(word & 0xff);
+            });
+
+            return new Uint8Array(decryptedArray);
+        }
+
+
+        function register(event) {
+            event.preventDefault();  // 阻止表单的默认提交行为
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const password_hash = CryptoJS.SHA256(password).toString(CryptoJS.enc.Hex);
+
+            fetch('http://127.0.0.1:5000/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ "username": username, "password": password_hash })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+
+                    // 解密 QR 码图像
+                    const decrypted_qr_code = decryptAES(data);
+
+                    // 将解密后的字节数组转换为 Blob
+                    const byteArray = new Uint8Array(decrypted_qr_code);
+                    const blob = new Blob([byteArray], { type: 'image/png' });
+
+                    // 创建 Blob 的 URL
+                    const url = URL.createObjectURL(blob);
+
+                    // 显示 QR 码图像
+                    const img = document.createElement('img');
+                    img.src = url;
+                    document.getElementById('qrCodeContainer').appendChild(img);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,363 @@
+<!-- 网页模板来自：http://www.mobanwang.com/ -->
+<!DOCTYPE html>
+<html lang="cn-zh">
+
+<head>
+    <title>用户注册</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css" type="text/css" media="all" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        /* Page overlay */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 9999;
+        }
+
+        /* Center modal */
+        #modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+            z-index: 10000;
+        }
+
+        #modal img {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+
+        #modal button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #modal button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="signinform">
+        <h1> 用户注册 </h1>
+        <!-- container -->
+        <div class="container">
+            <!-- main content -->
+            <div class="w3l-form-info">
+                <div class="w3_info">
+                    <h2>注册</h2>
+                    <!-- <form action="#" method="post"> -->
+                    <form action="#">
+                        <div class="input-group">
+                            <span><i class="fas fa-user" aria-hidden="true"></i></span>
+                            <input id="username" type="email" placeholder="用户名" required="">
+                        </div>
+                        <div class="input-group">
+                            <span><i class="fas fa-key" aria-hidden="true"></i></span>
+                            <input id="password" type="Password" placeholder="密码" required="">
+                        </div>
+                        <!-- <div class="form-row bottom">
+                            <div class="form-check">
+                                <input type="checkbox" id="remenber" name="remenber" value="remenber">
+                                <label for="remenber"> Remember me?</label>
+                            </div>
+                            <a href="#url" class="forgot">Forgot password?</a>
+                        </div> -->
+                        <button class="btn btn-primary btn-block" type="button" onclick="register(event)">注册</button>
+                    </form>
+                    <p class=" continue"><span>使用第三方账户注册</span></p>
+                    <div class="social-login">
+                        <a href="#facebook">
+                            <div class="facebook">
+                                <span class="fab fa-facebook-f" aria-hidden="true"></span>
+
+                            </div>
+                        </a>
+                        <a href="#twitter">
+                            <div class="twitter">
+                                <span class="fab fa-twitter" aria-hidden="true"></span>
+                            </div>
+                        </a>
+                        <a href="#google">
+                            <div class="google">
+                                <span class="fab fa-google" aria-hidden="true"></span>
+                            </div>
+                        </a>
+                    </div>
+                    <p class="account">已经有账户了？ <a href="index.html">登录</a></p>
+                </div>
+            </div>
+            <!-- //main content -->
+        </div>
+        <!-- //container -->
+        <!-- footer -->
+        <!-- <div class="footer">
+            <p>&copy; 2020 Service login form. All Rights Reserved | <a target="_blank" href="http://www.mobanwang.com/"
+                    title="网页模板">网页模板</a></p>
+        </div> -->
+        <!-- footer -->
+    </div>
+
+    <!-- Overlay and modal -->
+    <div id="overlay"></div>
+    <div id="modal">
+        <img id="qrImage" alt="QR Code">
+        <button onclick="redirectToLogin()">跳转登录</button>
+    </div>
+
+    <!-- fontawesome v5-->
+    <script src="js/fontawesome.js"></script>
+    <script>
+        function stringToArrayBuffer(str) {
+            const buffer = new ArrayBuffer(str.length);
+            const view = new Uint8Array(buffer);
+            for (let i = 0; i < str.length; i++) {
+                view[i] = str.charCodeAt(i);
+            }
+            return buffer;
+        }
+        function arrayBufferToHex(arrayBuffer) {
+            const bytes = new Uint8Array(arrayBuffer);
+            const hexBytes = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'));
+            return hexBytes.join('');
+        }
+        function arrayBufferToWordArray(arrayBuffer) {
+            const uint8Array = new Uint8Array(arrayBuffer);
+            return CryptoJS.lib.WordArray.create(uint8Array);
+        }
+        // DH
+        async function generateClientDHPublicKey() {
+            const clientKeyPair = await window.crypto.subtle.generateKey(
+                {
+                    name: "ECDH",
+                    namedCurve: "P-256"
+                },
+                true,
+                ["deriveBits", "deriveKey"]
+            );
+            const publicKey = await window.crypto.subtle.exportKey("spki", clientKeyPair.publicKey);
+            const bufferToBase64 = (buffer) => {
+                return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+            };
+            const publicKeyBase64 = bufferToBase64(publicKey);
+            const pemPublicKey = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+
+            return { pemPublicKey, clientKeyPair };
+        }
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const buffer = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                buffer[i] = binaryString.charCodeAt(i);
+            }
+            return buffer.buffer;
+        }
+        function arrayBufferToBase64(arrayBuffer) {
+            const binaryString = String.fromCharCode.apply(null, new Uint8Array(arrayBuffer));
+            return btoa(binaryString);
+        }
+        async function generateDerivedKey(clientPrivateKey) {
+            console.log(navigator.userAgent);
+            console.log("clientPrivateKey :", clientPrivateKey);
+            // 从缓存中获取服务器公钥
+            const serverPublicKeyResponse = await fetch('http://127.0.0.1:5000/dh_init');
+            if (!serverPublicKeyResponse.ok) {
+                throw new Error('Failed to fetch server public key');
+            }
+
+            const serverPublicKeyData = await serverPublicKeyResponse.json();
+            const serverPublicKeyBase64 = serverPublicKeyData.server_public_key;
+            console.log("serverPublicKeyBase64 :", serverPublicKeyBase64);
+
+            // 将服务器的公钥从 Base64 格式转换为 ArrayBuffer
+            // const serverPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${serverPublicKeyBase64}\n-----END PUBLIC KEY-----`;
+            // const serverPublicKeyBuffer = new TextEncoder().encode(serverPublicKeyBase64);
+            const serverPublicKeyBuffer = base64ToArrayBuffer(serverPublicKeyBase64);
+            console.log("serverPublicKeyBuffer :", serverPublicKeyBuffer);
+            // 将 ArrayBuffer 转换为 CryptoKey 对象
+            const serverPublicKey = await window.crypto.subtle.importKey(
+                "spki",
+                serverPublicKeyBuffer,
+                {
+                    name: "ECDH",
+                    namedCurve: "P-256",
+                },
+                false, // 不允许导出服务器的公钥
+                ["deriveBits", "deriveKey"]
+            );
+            console.log("serverPublicKey:", serverPublicKey);
+
+            // 使用客户端私钥和服务器公钥生成共享密钥
+            const sharedSecret = await window.crypto.subtle.deriveBits(
+                {
+                    name: "ECDH",
+                    public: serverPublicKey,
+                },
+                clientPrivateKey,
+                256
+            );
+            console.log("Shared Secret:", sharedSecret);
+            const sharedSecretBase64 = arrayBufferToBase64(sharedSecret);
+            console.log("Shared Secret (Base64):", sharedSecretBase64);
+            // 使用共享密钥派生出对称密钥
+            const HKDFslat = new Uint8Array();
+            const HKDFinfo = new TextEncoder().encode("register session");
+            const sharedSecretKey = await window.crypto.subtle.importKey(
+                "raw",
+                sharedSecret,
+                { name: "HKDF" },
+                false, // 不允许导出共享密钥
+                ["deriveBits", "deriveKey"]
+            );
+            const derivedKey = await window.crypto.subtle.deriveKey(
+                {
+                    name: "HKDF",
+                    hash: "SHA-256",
+                    salt: HKDFslat.buffer,
+                    info: HKDFinfo.buffer,
+                },
+                sharedSecretKey,
+                {
+                    name: "AES-CBC",
+                    length: 256,
+                },
+                true, // 允许导出
+                ["encrypt", "decrypt"]
+            );
+            console.log("derivedKey:", derivedKey);
+            const derivedKeyArrayBuffer = await window.crypto.subtle.exportKey("raw", derivedKey)
+            const derivedKeyBase64 = arrayBufferToBase64(derivedKeyArrayBuffer);
+            // const derivedKeyHex = arrayBufferToHex(derivedKeyArrayBuffer);
+            console.log("Derived Key (base64):", derivedKeyBase64);
+            return derivedKeyBase64;
+        }
+
+        // 解密逻辑
+        function decryptAES(encrypted_qr_code_64, symmetric_key_64, iv_64) {
+            const encrypted_qr_code = CryptoJS.enc.Base64.parse(encrypted_qr_code_64);
+            const symmetric_key = CryptoJS.enc.Base64.parse(symmetric_key_64);
+            const iv = CryptoJS.enc.Base64.parse(iv_64);
+            // 解密
+            const decrypted = CryptoJS.AES.decrypt(
+                { ciphertext: encrypted_qr_code },
+                symmetric_key,
+                {
+                    iv: iv,
+                    mode: CryptoJS.mode.CBC,
+                    padding: CryptoJS.pad.Pkcs7
+                }
+            );
+
+            // 转换为字节数组
+            const decryptedArray = [];
+            decrypted.words.forEach((word) => {
+                decryptedArray.push((word >> 24) & 0xff);
+                decryptedArray.push((word >> 16) & 0xff);
+                decryptedArray.push((word >> 8) & 0xff);
+                decryptedArray.push(word & 0xff);
+            });
+
+            return new Uint8Array(decryptedArray);
+        }
+
+
+        async function register(event) {
+            console.log('Event prevented');
+            window.history.pushState(null, "", window.location.href);
+            event.preventDefault();  // 阻止表单的默认提交行为
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const password_hash = CryptoJS.SHA256(password).toString(CryptoJS.enc.Hex);
+
+            // 生成客户端 DH 公钥
+            const { pemPublicKey, clientKeyPair } = await generateClientDHPublicKey();
+
+            // 检查公钥是否生成成功
+            if (!pemPublicKey) {
+                console.error('Public key generation failed');
+                alert('Failed to generate public key. Please try again.');
+                return;
+            }
+
+            fetch('http://127.0.0.1:5000/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "username": username,
+                    "password": password_hash,
+                    "client_public_key": pemPublicKey,
+                })
+            })
+                .then(response => response.json())
+                .then(async data => {
+                    console.log('Success:', data);
+                    const sharedKey = await generateDerivedKey(clientKeyPair.privateKey)
+                    const decrypted_qr_code = decryptAES(data.otp_qr_code, sharedKey, data.iv);
+
+                    // 将解密后的字节数组转换为 Blob
+                    const byteArray = new Uint8Array(decrypted_qr_code);
+                    const blob = new Blob([byteArray], { type: 'image/png' });
+
+                    // 创建 Blob 的 URL
+                    const url = URL.createObjectURL(blob);
+
+                    // 显示 QR 码图像
+                    document.getElementById('qrImage').src = url;
+                    document.getElementById('overlay').style.display = 'block';
+                    document.getElementById('modal').style.display = 'block';
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
+        // function redirectToLogin() {
+        //     window.location.href = "index.html";
+        // }
+        function redirectToLogin() {
+            fetch('http://127.0.0.1:5000/commit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === "Commit successful") {
+                        window.location.href = "index.html";
+                    } else {
+                        alert("Commit failed: " + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert("Commit failed: " + error.message);
+                });
+        }
+    </script>
+
+</body>
+
+</html>
